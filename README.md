@@ -3,7 +3,9 @@ PrimeCam Simulations for timestream data and Mapmaking
 Note: High memory usage expected. Run only on a cluster
 
 Auxiliary files needed: 
-This files should be put inside `./input_files/`
+[pysm3_map_nside2048_allStokes.fits](https://www.dropbox.com/scl/fi/gm4xuhguht5dx848d9e69/pysm3_map_nside2048_allStokes.fits?rlkey=0qga1dkj6442vxrnvku3pcrlx&dl=0)
+
+This file should be put inside `./input_files/`
 
 ### First let's start with timestream simulation.
 
