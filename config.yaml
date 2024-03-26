@@ -23,14 +23,14 @@ prefix: 'ml_maps_deep56'
 #wafer: 'w17' # Restrict which wafers are mapped. Can do multiple wafers
 
 # Mapmaking meta
-comps: 'T' # TQU #'T'
+comps: 'T' # 'TQU' #'T'
 inject: null
 nocal: True # No relcal or abscal
 downsample: 1 # Downsample TOD by this factor
 tiled: 0 # Tiling boolean (0 or 1)
 nmat-dir: './ccat_datacenter_mock/nmats/' # Dir to save or load nmat
 nmat: 'corr' # 'corr' or 'uncorr'
-maxiter: 500 default # Max number of iterative steps
+maxiter: 500 #default # Max number of iterative steps
 nmat_mode: 'build' # 'cache', 'build', 'load' or 'save'
 center_at: null #'16.0:-2.0'
 window: 0.0
