@@ -22,6 +22,7 @@
 #22-03-2024: Begin integrated script implemention
 #23-03-2024: Implemented multiple schedules
 #23-03-2024: Modified schedule field name; must be %field_%dd_%mm for uid
+#02-04-2024: Updated Atmosphere implementation
 ###
 
 """
@@ -58,6 +59,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import os
 import argparse
+import random
 
 ### Timing Imports ###
 import time as t
@@ -275,8 +277,13 @@ def primecam_mockdata_pipeline(focalplane, schedule_file):
 
     #Atmospheric simulation
     logger.info(f"Atmospheric simulation...")
+        #Atmosphere set-up
+    rand_realisation = random.randint(10000, 99999)
+    tel_fov = 6* u.deg
     cache_dir = "./atm_cache"
+
     sim_atm_coarse =toast.ops.SimAtmosphere(
+                    name="sim_atm_coarse",
                     add_loading=False,
                     lmin_center=300 * u.m,
                     lmin_sigma=30 * u.m,
@@ -287,17 +294,15 @@ def primecam_mockdata_pipeline(focalplane, schedule_file):
                     zstep=50 * u.m,
                     zmax=2000 * u.m,
                     nelem_sim_max=30000,
-                    gain=6e-4,
+                    gain=2e-5,
                     realization=1000000,
                     wind_dist=10000 * u.m,
                     enabled=False,
                     cache_dir=cache_dir,
                 )
 
-    sim_atm_coarse.realization = 1000000 + 12345
-    sim_atm_coarse.field_of_view = 6* u.deg
-    # telescope.focalplane.field_of_view * 1.3 #5* u.deg () for 100 dets
-    #3* u.deg for 10 dets
+    sim_atm_coarse.realization = 1000000 + rand_realisation
+    sim_atm_coarse.field_of_view = tel_fov
     sim_atm_coarse.detector_pointing = det_pointing_azel
     sim_atm_coarse.enabled = True  # Toggle to False to disable
     sim_atm_coarse.serial = False
@@ -305,24 +310,27 @@ def primecam_mockdata_pipeline(focalplane, schedule_file):
     log.info_rank(" Applied large-scale Atmosphere simulation in", comm=world_comm, timer=timer)
 
     #------------------------#
+    
     sim_atm_fine= toast.ops.SimAtmosphere(
-                add_loading=True,
-                lmin_center=0.001 * u.m,
-                lmin_sigma=0.0001 * u.m,
-                lmax_center=1 * u.m,
-                lmax_sigma=0.1 * u.m,
-                xstep=4 * u.m,
-                ystep=4 * u.m,
-                zstep=4 * u.m,
-                zmax=100 * u.m, 
-                gain=1e-5,
-                wind_dist=1000 * u.m,
-                enabled=False,
-                cache_dir=cache_dir,
-            )
+            name="sim_atm_fine",
+            add_loading=True,
+            lmin_center=0.001 * u.m,
+            lmin_sigma=0.0001 * u.m,
+            lmax_center=1 * u.m,
+            lmax_sigma=0.1 * u.m,
+            xstep=4 * u.m,
+            ystep=4 * u.m,
+            zstep=4 * u.m,
+            zmax=100 * u.m,
+            gain=4e-5,
+            wind_dist=1000 * u.m,
+            enabled=False,
+            cache_dir=cache_dir,
+        )
 
-    sim_atm_fine.realization = 12345
-    sim_atm_fine.field_of_view = 6* u.deg
+    sim_atm_fine.realization = rand_realisation
+    sim_atm_fine.field_of_view = tel_fov
+
     sim_atm_fine.detector_pointing = det_pointing_azel
     sim_atm_fine.enabled = True  # Toggle to False to disable
     sim_atm_fine.serial = False
