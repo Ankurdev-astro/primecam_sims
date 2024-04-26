@@ -23,6 +23,7 @@
 #23-03-2024: Implemented multiple schedules
 #23-03-2024: Modified schedule field name; must be %field_%dd_%mm for uid
 #02-04-2024: Updated Atmosphere implementation
+#26-04-2024: Cleaned up script and toggle OFF max_pwv
 ###
 
 """
@@ -104,7 +105,6 @@ class args:
 
     scan_accel_az = 4  * (u.deg / u.s**2)
     fov = 1.3 * u.deg # Field-of-view in degrees
-    # g3_outdir = "./g3_dataframes"
     h5_outdir = "./ccat_datacenter_mock/"
 
     mode = "IQU" #"IQU"
@@ -112,13 +112,6 @@ class args:
     freq = 280 * u.GHz
     fwhm = 0.78 *u.arcmin
     
-#def format_unix_times(start_unix, end_unix):
-#    # Convert unix timestamps to datetime objects
-#    start_time = datetime.utcfromtimestamp(start_unix)
-#    end_time = datetime.utcfromtimestamp(end_unix)
-#    frmt_day_month = f"{start_time.strftime('%d%m')}_{end_time.strftime('%d%m')}"
-#    return frmt_day_month
-
 def reformat_dets(dets_pck):
     # extract values for each column from detector dictionary
     det_names = list(dets_pck.keys())
@@ -228,7 +221,7 @@ def primecam_mockdata_pipeline(focalplane, schedule_file):
     sim_ground.schedule = schedule
     sim_ground.scan_rate_az =  args.scan_rate_az
     sim_ground.scan_accel_az = args.scan_accel_az
-    sim_ground.max_pwv = 1.41 *u.mm
+    #sim_ground.max_pwv = 1.41 *u.mm 
     sim_ground.apply(data)
     
     logger.info(f"Number of Observations loaded: {len(data.obs)}")
@@ -350,9 +343,6 @@ def primecam_mockdata_pipeline(focalplane, schedule_file):
 
     field_name = (data.obs[0].name).split('-')[0]
     n_dets = telescope.focalplane.n_detectors
-    #start_unix = data.obs[0].shared["times"][0]
-    #end_unix = data.obs[len(data.obs)-1].shared["times"][0]
-    #format_obs_startend = format_unix_times(start_unix, end_unix)
 
     #Write to h5
     output_dir = args.h5_outdir
@@ -379,8 +369,8 @@ with {n_dets} detectors")
 ###==================================================###    
 
 if __name__ == '__main__':
-    
-    parser = argparse.ArgumentParser(description="Sim xyz")
+   
+    parser = argparse.ArgumentParser(description="Simulate PrimeCam Timestream Data")
     parser.add_argument('--test-run', action='store_true', help="Test run with 1 schedule")
     parsed_args = parser.parse_args()
 
@@ -435,8 +425,6 @@ if __name__ == '__main__':
 
     if not parsed_args.test_run:
         for file_count, schedule_file in enumerate(filenames):
-            #if file_count>1:
-            #    break
             sch_file_path = os.path.join(sch_rel_path,schedule_file)
             logger.info(f"Loading schedule #{file_count+1}: {sch_file_path}")
             primecam_mockdata_pipeline(focalplane, sch_file_path)
@@ -445,9 +433,6 @@ if __name__ == '__main__':
         primecam_mockdata_pipeline(focalplane, schedule_file)
 
     log.info_rank("Full mock data generated in", comm=world_comm, timer=global_timer)
-    #exit(0)
-    #schedule_file = "./input_files/schedule_Deep56_20_11.txt"
-    #primecam_mockdata_pipeline(focalplane, schedule_file)    
     
     sim_end_time = t.time()
     sim_elapsed_time = sim_end_time - sim_start_time
