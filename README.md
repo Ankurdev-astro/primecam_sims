@@ -30,16 +30,17 @@ maxiter: set to a lower value for quick testing
 ```
 
 #### Converting TOAST HDF5 files to SPT3G format:
-```
+
 TOAST natively supports writing data to disk in HDF5 files.
 To convert the produced h5 files into g3, use `scripts/toast_h5_g3.py`
 
-Usage: `python toast_h5_g3.py [-h] h5_dirs`
-Example: `python toast_h5_g3.py ../ccat_datacenter_mock/path_to_h5_dir`
+```
+Usage: python toast_h5_g3.py [-h] h5_dirs
+Example: python toast_h5_g3.py ../ccat_datacenter_mock/path_to_h5_dir
+```
 
 This script takes a directory containing h5 files and generates a directory with
 corresponding g3 files. If there are multiple h5 directories that need to be processed,
-run this script for each of those. The script shall throw an error if the corresponding g3 file
-already exists.
+run this script for each of those. The script shall throw an error if the corresponding 
+g3 file already exists.
 
-```
