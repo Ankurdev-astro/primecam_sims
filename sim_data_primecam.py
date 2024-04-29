@@ -24,6 +24,7 @@
 #23-03-2024: Modified schedule field name; must be %field_%dd_%mm for uid
 #02-04-2024: Updated Atmosphere implementation
 #26-04-2024: Cleaned up script and toggle OFF max_pwv
+#29-04-2024: Updated FP files with v4.pkl (10, 100 dets)
 ###
 
 """
@@ -393,8 +394,7 @@ if __name__ == '__main__':
     log.info_rank("Begin set-up and monitors for Simulating timestream data for PrimeCam/FYST", comm=world_comm)
 
     #FP from https://github.com/ccatobs/sotodlib
-    fp_filename = "./input_files/fp_files/dets_FP_PC280_100_w12.pkl"
-    # fp_filename = "dets_FP_PC280.pkl"
+    fp_filename = "./input_files/fp_files/dets_FP_PC280_100_w12_updated.pkl"
     logger.info(f"Loading focalplane: {fp_filename}")
 
     with open(fp_filename, "rb") as f:
