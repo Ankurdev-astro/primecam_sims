@@ -62,7 +62,7 @@ import pickle as pkl
 
 import numpy as np
 from datetime import datetime
-import os, requests
+import os
 import argparse
 import random
 import time as t
@@ -282,7 +282,6 @@ def primecam_mockdata_pipeline(comm, focalplane, schedule, group_size):
     mem = toast.utils.memreport(msg="(whole node)", comm=world_comm, silent=True)
     log.info_rank(f"After Scanning Input Map:  {mem}", world_comm)
 
-    # exit(0)
     #Atmospheric simulation
     log.info_rank(f"Atmospheric simulation...", world_comm)
         #Atmosphere set-up
@@ -311,8 +310,6 @@ def primecam_mockdata_pipeline(comm, focalplane, schedule, group_size):
 
     sim_atm_coarse.realization = 1000000 + rand_realisation
     sim_atm_coarse.field_of_view = tel_fov
-    # telescope.focalplane.field_of_view * 1.3 #5* u.deg () for 100 dets
-    #5* u.deg for 10 dets
     sim_atm_coarse.detector_pointing = det_pointing_azel
     sim_atm_coarse.enabled = True  # Toggle to False to disable
     sim_atm_coarse.serial = False
@@ -360,9 +357,6 @@ def primecam_mockdata_pipeline(comm, focalplane, schedule, group_size):
 
     field_name = (data.obs[0].name).split('-')[0]
     n_dets = telescope.focalplane.n_detectors
-    #start_unix = data.obs[0].shared["times"][0]
-    #end_unix = data.obs[len(data.obs)-1].shared["times"][0]
-    #format_obs_startend = format_unix_times(start_unix, end_unix)
 
     #Write to h5
     output_dir = args.h5_outdir
@@ -394,8 +388,8 @@ def main():
         epilog="Note: Provide only the name of the schedule file, not the path. \n \
             The schedule file must be in the 'input_files/schedules' directory.")
     # Required argument for the schedule file
-    parser.add_argument('s','--sch', required=True, help="Name of the schedule file")
-    parser.add_argument('g','--grp_size', default=None, type=int, help="Group size (optional)")
+    parser.add_argument('-s','--sch', required=True, help="Name of the schedule file")
+    parser.add_argument('-g','--grp_size', default=None, type=int, help="Group size (optional)")
 
     parsed_args = parser.parse_args()
     
