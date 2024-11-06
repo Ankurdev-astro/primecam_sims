@@ -1,6 +1,9 @@
+#Last updated: Oct 17, 2024
+#Last commit ref: https://github.com/simonsobs/sotodlib/commit/b7b734ae1e3ee3c971736114721d068b234490b3
+
 from argparse import ArgumentParser
 import numpy as np, sys, time, warnings, os, so3g
-from sotodlib.core import Context, AxisManager, IndexAxis
+from sotodlib.core import Context, AxisManager, IndexAxis, FlagManager
 from sotodlib import mapmaking
 from sotodlib.io import metadata   # PerDetectorHdf5 work-around
 from sotodlib import tod_ops
@@ -9,6 +12,7 @@ from pixell import enmap, utils, fft, bunch, wcsutils, mpi
 import yaml
 from sotodlib.site_pipeline import util
 import logging
+from scripts.so_mlmap_logger import init
 
 defaults = {"query": "1",
             "odir": "./outputs",
@@ -95,7 +99,7 @@ def main(config_file=None, defaults=defaults, **args):
     # Create a report logger
     report_logger = logging.getLogger('report_logger')
     report_logger.setLevel(logging.DEBUG)  # Set the logging level
-    console_handler = logging.StreamHandler()
+    console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.DEBUG)  # Set the logging level for the handler
     console_handler.setFormatter(ColoredFormatter('%(message)s'))
     report_logger.addHandler(console_handler)
@@ -140,8 +144,12 @@ def main(config_file=None, defaults=defaults, **args):
     if args['prefix']: prefix += args['prefix'] + "_"
     utils.mkdir(args['odir'])
 
-    L = mapmaking.init(level=mapmaking.DEBUG, rank=comm.rank)
-    report_logger.info("Rank  Run-Time(min)  Resident-Mem(GB)  Current-Mem(GB)  Max-record-Mem(GB)  Status-Message")
+    #L = mapmaking.init(level=mapmaking.DEBUG, rank=comm.rank)
+    L = init(level=mapmaking.DEBUG, rank=comm.rank)
+    
+    comm.Barrier()
+    if comm.rank == 0:
+        report_logger.info("Rank  Run-Time(min)  Resident-Mem(GB)  Current-Mem(GB)  Max-record-Mem(GB)  Status-Message")
 
     recenter = None
     if args['center_at']:
@@ -232,10 +240,13 @@ def main(config_file=None, defaults=defaults, **args):
             # to potential high offses in the raw tod.
             utils.deslope(obs.signal, w=5, inplace=True)
             obs.signal = obs.signal.astype(dtype_tod)
-
-            if "glitch_flags" not in obs:
-                obs.wrap_new('glitch_flags', shape=('dets', 'samps'),
-                        cls=so3g.proj.RangesMatrix.zeros)
+            
+            if 'flags' not in obs._fields:
+                obs.wrap('flags', FlagManager.for_tod(obs))
+             
+            if "glitch_flags" not in obs.flags:
+                obs.flags.wrap('glitch_flags', so3g.proj.RangesMatrix.zeros(obs.signal.shape),
+                        [(0,'dets'),(1,'samps')])
 
             # Optionally skip all the calibration. Useful for sims.
             if not args['nocal']:
@@ -246,7 +257,7 @@ def main(config_file=None, defaults=defaults, **args):
                     L.debug("Skipped %s (all dets cut)" % (name))
                     continue
                 # Gapfill glitches. This function name isn't the clearest
-                tod_ops.get_gap_fill(obs, flags=obs.glitch_flags, swap=True)
+                tod_ops.get_gap_fill(obs, flags=obs.flags.glitch_flags, swap=True)
                 # Gain calibration
                 gain  = 1
                 for gtype in ["relcal","abscal"]:
@@ -271,6 +282,7 @@ def main(config_file=None, defaults=defaults, **args):
                 obs.focal_plane.eta   += obs.boresight_offset.dy
                 obs.focal_plane.gamma += obs.boresight_offset.gamma
 
+            
             # Injecting at this point makes us insensitive to any bias introduced
             # in the earlier steps (mainly from gapfilling). The alternative is
             # to inject it earlier, and then anti-calibrate it
@@ -291,14 +303,13 @@ def main(config_file=None, defaults=defaults, **args):
             # And add it to the mapmaker
             #with mapmaking.mark("add_obs %s" % name):
             #    mapmaker.add_obs(name, obs, noise_model=nmat)
-            #del obs
-            #nset_kept += 1
+
             ##-----------------------------------##
             try:
                 # Attempt to add the observation to the mapmaker
                 with mapmaking.mark("add_obs %s" % name):
                     mapmaker.add_obs(name, obs, noise_model=nmat)
-                L.info(f"Successfully added {name}")
+                # L.info(f"Successfully added {name}")
             except Exception as e:
                 # Handle exceptions that occur during add_obs
                 L.error(f"Failed to add {name}: {e}")
@@ -309,8 +320,6 @@ def main(config_file=None, defaults=defaults, **args):
             nset_kept += 1
 
             ##-----------------------------------##
-            
-
 
             # Maybe save the noise model we built (only if we actually built one rather than
             # reading one in)
@@ -327,6 +336,7 @@ def main(config_file=None, defaults=defaults, **args):
         sys.exit(1)
 
     L.info("Done building")
+    comm.Barrier() #checking code
 
     with mapmaking.mark("prepare"):
         mapmaker.prepare()
@@ -340,9 +350,13 @@ def main(config_file=None, defaults=defaults, **args):
     L.info("Wrote rhs, div, bin")
 
     t1 = time.time()
-    report_logger.info(f"{' ':<37} {'CG Step':<10} {'Error':<12} {'Time(s)':<5}")
+    comm.Barrier()
+    if comm.rank == 0:
+        report_logger.info(f"{' ':<37} {'CG Step':<10} {'Error':<12} {'Time(s)':<5}")
     for step in mapmaker.solve(maxiter=args['maxiter']):
         t2 = time.time()
+        
+        # Dump out intermediate maps only id dump-write is set
         if args['dump-write']:
             dump = step.i % 10 == 0
             L.info("CG step %4d %15.7e %8.3f %s" % (step.i, step.err, t2-t1, "" if not dump else "(write)"))
