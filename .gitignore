@@ -19,5 +19,4 @@ run_*
 input_files/schedules/schedule_1scan.txt.bck
 
 scripts/monitors/*
-
 scripts/so_mlmap_logger.py
