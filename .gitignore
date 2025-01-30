@@ -12,7 +12,7 @@ Planck_Parchment_RGB.txt
 
 input_files/pysm3_map_nside2048_allStokes.fits
 
-input_files/fp_files
+input_files/fp_files/*
 
 !input_files/fp_files/dets_FP_PC280_100_w2.h5
 !input_files/fp_files/fp_f280_dettable.h5
