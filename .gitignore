@@ -20,3 +20,4 @@ input_files/fp_files/*
 run_*
 
 scripts/log_scripts/*
+!scripts/log_scripts/hpc_memLogger.sh
