@@ -1,4 +1,6 @@
 __pycache__
+scripts/__pycache__
+scripts/fp_scripts/__pycache__
 .ipynb_checkpoints
 __init__.py-*
 
@@ -10,13 +12,12 @@ Planck_Parchment_RGB.txt
 
 input_files/pysm3_map_nside2048_allStokes.fits
 
-input_files/fp_files/dets_FP_PC280_1000_w12_updated.pkl
-input_files/fp_files/dets_FP_PC280_750_w12_updated.pkl
-input_files/fp_files/dets_FP_PC280_10_w12_updated.pkl
+input_files/fp_files/*
+
+!input_files/fp_files/dets_FP_PC280_100_w2.h5
+!input_files/fp_files/fp_f280_dettable.h5
 
 run_*
 
-input_files/schedules/schedule_1scan.txt.bck
-
-scripts/monitors/*
-scripts/so_mlmap_logger.py
+scripts/log_scripts/*
+!scripts/log_scripts/hpc_memLogger.sh
