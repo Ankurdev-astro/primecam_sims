@@ -4,8 +4,8 @@
 ###     SLURM script for primecam_sims     ####
 ###      ARRAY JOB runs all schedules      ####
 ###					   ####
-###     Tested on Uni Bonn Marvin Cluster  ####
-###             v2.0 , 18.10.2024          ####
+###    Tested on Uni Koeln Ramses Cluster  ####
+###             v3.0 , 17.02.2025          ####
 ###############################################
 
 ### This script runs through all the schedule files
@@ -14,19 +14,18 @@
 
 ### section 1 - SLURM params
 
-#SBATCH --partition=intelsr_short
-### cluster specific / intelsr_short, lm_short, lm_devel
-### https://wiki.hpc.uni-bonn.de/en/running_jobs
+#SBATCH --partition=mpi
+#SBATCH --account=ag-riechers # For Ramses/ CCAT
+### cluster specific; ramses / mpi(mpi+multi-node), smp(no_mpi+single-node), bigsmp(big-mem)
+### https://gitlab.git.nrw/uzk-itcc-hpc/itcc-hpc-ramses/-/wikis/SLURM
 
-### #SBATCH --ntasks 8      # number of procs to start
-### or
 #SBATCH --ntasks-per-node 12 # tasks per node ; num of processes per node
-#SBATCH --cpus-per-task 4 # number of cores per task ; threads per process
+#SBATCH --cpus-per-task 8    # number of cores per task ; threads per process
 
-#SBATCH --nodes 1  # number of nodes
-#SBATCH --array=0-23  # Define the array size, 24 schs
+#SBATCH --nodes 1            # number of nodes
+#SBATCH --array=0-23         # Define the array size, 24 schs
 
-#SBATCH --job-name=det100_n12c4_sim 
+#SBATCH --job-name=det500_n12c8_sim 
 ### Job name, det#ndets_#ntaskstotal_#corespertask_sim
 ### ntasks = 8, cpus=4, d200 seems best ~ 90min
 
@@ -34,30 +33,34 @@
 ### #ncores_total = #ntasks x #cpus-per-task
 ### #ncores_total_pernode = #ntasks-per-node x #cpus-per-task
 
-### #SBATCH --mem-per-cpu=10G # mem per proc, baseline 8G
-#SBATCH --mem=400G                # max mem requested, per node [min 400G for 1000 dets]
+#SBATCH --mem=350G           # max mem requested, per node [min 400G for 1000 dets]
 ### Maximum requested time (days-hrs:min:sec)
-#SBATCH --time 0-00:05:00 #estimated runtime max 0-04:00:00
+#SBATCH --time 0-02:00:00 #estimated runtime max 0-04:00:00
 
-#SBATCH --output ./logs/%A_%a_%x.out 
-#SBATCH --error ./logs/%A_%a_%x.err 
+#SBATCH --output ./logs_sims/%A_%a_%x.out 
+#SBATCH --error ./logs_sims/%A_%a_%x.err 
 
 
 ### section 2 - Runtime env set-up
+echo ""
+echo "*************"
+echo "Loading Modules and Env..."
 module purge
 ### load all modules needed for Job
-module load mpi4py
+module load lang/Miniconda3/23.9.0-0
+module load lib/mpi4py/3.1.5-gompi-2023b
 ### initiate conda
-### source /opt/software/easybuild-INTEL/software/Anaconda3/2022.05/etc/profile.d/conda.sh
-source /opt/software/easybuild-INTEL/software/Miniforge3/24.1.2-0/etc/profile.d/conda.sh
 conda deactivate
 conda activate toast3
+echo "*************"
+
 
 ### section 3 - Job Logging
 echo ""
 echo "*************"
 echo "Running Job..."
 echo "Starting at `date`"
+echo "SLURM partition: $SLURM_JOB_PARTITION"
 echo "Hostname $HOSTNAME"
 echo "Job Name: $SLURM_JOB_NAME"
 echo "Job ID: $SLURM_JOB_ID"
@@ -77,13 +80,21 @@ echo ""
 
 ### section 4 - Set Job parameters
 ### Set number of detectors
-ndets=100
+ndets=500
 
 ### section 5 - Job Run
 echo "***** EXEC SCRIPT *****"
 echo `date '+%F %H:%M:%S'`
 echo "***********************"
 echo ""
+
+### ******************************** ###
+### RAMSES OpenMP FIX:
+### https://github.com/easybuilders/easybuild-easyconfigs/issues/20233
+export OMPI_MCA_btl='^uct,ofi'
+export OMPI_MCA_pml='ucx'
+export OMPI_MCA_mtl='^ofi'
+### ******************************** ###
 
 ### Collect all schedule files from input dir
 schedule_files_list=($(basename -a input_files/schedules/*.txt))
@@ -118,5 +129,3 @@ echo ""
 echo "******** DONE *********"
 echo `date '+%F %H:%M:%S'`
 echo "***********************"
-
-

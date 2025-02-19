@@ -6,7 +6,7 @@ __init__.py-*
 
 *.log
 ccat_datacenter_mock/*
-logs/*
+logs*
 atm_cache/*
 Planck_Parchment_RGB.txt
 

@@ -2,7 +2,7 @@
 import numpy as np
 import os
 import argparse
-from filelock import FileLock
+###from filelock import FileLock
 from astropy.table import QTable
 
 def read_full_table(file_path):
