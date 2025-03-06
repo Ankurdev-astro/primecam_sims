@@ -19,23 +19,22 @@
 ### cluster specific; ramses / mpi(mpi+multi-node), smp(no_mpi+single-node), bigsmp(big-mem)
 ### https://gitlab.git.nrw/uzk-itcc-hpc/itcc-hpc-ramses/-/wikis/SLURM
 
-#SBATCH --ntasks-per-node 12 # tasks per node ; num of processes per node
+#SBATCH --ntasks-per-node 24 # tasks per node ; num of processes per node
 #SBATCH --cpus-per-task 8    # number of cores per task ; threads per process
 
 #SBATCH --nodes 1            # number of nodes
 #SBATCH --array=0-23         # Define the array size, 24 schs
 
-#SBATCH --job-name=det500_n12c8_sim 
+#SBATCH --job-name=det100_n24c8_sim 
 ### Job name, det#ndets_#ntaskstotal_#corespertask_sim
-### ntasks = 8, cpus=4, d200 seems best ~ 90min
 
 ### #ntasks = #nodes x #ntasks-per-node
 ### #ncores_total = #ntasks x #cpus-per-task
 ### #ncores_total_pernode = #ntasks-per-node x #cpus-per-task
 
-#SBATCH --mem=350G           # max mem requested, per node [min 400G for 1000 dets]
+#SBATCH --mem=700G           # max mem requested, per node [min 550G for 1000 dets]
 ### Maximum requested time (days-hrs:min:sec)
-#SBATCH --time 0-02:00:00 #estimated runtime max 0-04:00:00
+#SBATCH --time 0-02:00:00 #estimated runtime max 0-02:00:00
 
 #SBATCH --output ./logs_sims/%A_%a_%x.out 
 #SBATCH --error ./logs_sims/%A_%a_%x.err 
@@ -74,27 +73,22 @@ echo "Cores per Node: $SLURM_CPUS_ON_NODE"
 echo "Total Number of Nodes: $SLURM_JOB_NUM_NODES"
 echo "Current working directory is `pwd`"
 echo "Python path: $(which python)"
+echo "Python version: $(python --version)"
+echo "Using mpi4py: $(python -c 'import mpi4py; print(mpi4py.__file__)' 2>/dev/null || echo '!! mpi4py not found !!')"
 echo "Using MPI lib: $(which mpirun)"
+echo "Using mpicc lib: $(which mpicc)"
 echo "Using GCC lib: $(which gcc)"
 echo ""
 
 ### section 4 - Set Job parameters
 ### Set number of detectors
-ndets=500
+ndets=100
 
 ### section 5 - Job Run
 echo "***** EXEC SCRIPT *****"
 echo `date '+%F %H:%M:%S'`
 echo "***********************"
 echo ""
-
-### ******************************** ###
-### RAMSES OpenMP FIX:
-### https://github.com/easybuilders/easybuild-easyconfigs/issues/20233
-export OMPI_MCA_btl='^uct,ofi'
-export OMPI_MCA_pml='ucx'
-export OMPI_MCA_mtl='^ofi'
-### ******************************** ###
 
 ### Collect all schedule files from input dir
 schedule_files_list=($(basename -a input_files/schedules/*.txt))
