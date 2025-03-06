@@ -95,17 +95,17 @@ echo ""
 
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
-###### Build context data
-###echo ""
-###echo "Building context data ..."
-###echo ""
-###mpirun -np $SLURM_NTASKS python write_context_primecam_mpi.py $FULL_DATA_PATH
-###
-###### Build Map Footprint
-###echo ""
-###echo "Building map footprint ..."
-###echo ""
-###mpirun -np $SLURM_NTASKS python write_footprint_primecam_mpi.py
+### Build context data
+echo ""
+echo "Building context data ..."
+echo ""
+mpirun -np $SLURM_NTASKS python write_context_primecam_mpi.py $FULL_DATA_PATH
+
+### Build Map Footprint
+echo ""
+echo "Building map footprint ..."
+echo ""
+mpirun -np $SLURM_NTASKS python write_footprint_primecam_mpi.py
 
 ### Build Map
 echo ""
