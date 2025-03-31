@@ -1,7 +1,7 @@
 #!/bin/bash
 
-SBATCH_SCRIPT="example_array_sim.slurm"
-###SBATCH_SCRIPT="example_mlmap.slurm"
+###SBATCH_SCRIPT="ramses_array_sim.slurm"
+SBATCH_SCRIPT="ramses_mlmap.slurm"
 
 # Submit the Slurm job and capture the job ID
 JOB_SUBMIT_OUTPUT=$(sbatch "$SBATCH_SCRIPT")

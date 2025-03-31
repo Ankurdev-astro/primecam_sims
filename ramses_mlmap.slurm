@@ -3,55 +3,61 @@
 ###############################################
 ###       SLURM script for ML Mapmaking    ####
 ###                                        ####
-###     Tested on Uni Bonn Marvin Cluster  ####
-###             v1.0 , 18.10.2024          ####
+###    Tested on Uni koeln Ramses Cluster  ####
+###             v2.0 , 19.02.2025          ####
 ###############################################
 
-### This script run the ML-pipeline for a given set of detector TODs
-### NOTE: PARENT_DIR parameter must be set in Section 4
+### This script runs the ML-pipeline for a given set of detector TODs
+### *** NOTE ***: -- PARENT_DIR parameter must be set in Section 4
+###		  -- Set config.yaml parameter
+
 
 ### section 1 - SLURM params
 
-#SBATCH --partition=intelsr_short # cluster specific / intelsr_short, lm_short
-### https://wiki.hpc.uni-bonn.de/en/running_jobs
+#SBATCH --partition=mpi
+#SBATCH --account=ag-riechers # For Ramses/ CCAT
+### cluster specific; ramses / mpi(mpi+multi-node), smp(no_mpi+single-node), bigsmp(big-mem)
+### https://gitlab.git.nrw/uzk-itcc-hpc/itcc-hpc-ramses/-/wikis/SLURM
 
-### #SBATCH --ntasks 8      # number of procs to start
-### or
-#SBATCH --ntasks-per-node 16 # tasks per node ; num of processes per node
-#SBATCH --cpus-per-task 6 # number of cores per task ; threads per process
+#SBATCH --ntasks-per-node 32  # tasks per node ; num of processes per node
+#SBATCH --cpus-per-task 6     # number of cores per task ; threads per process
 
-#SBATCH --nodes 2  # number of nodes
+#SBATCH --nodes 1             # number of nodes
 
-#SBATCH --job-name=det1000_n16c6nd2_ml # Job name, #ntaskstotal#corespertask#n_nodes
+#SBATCH --job-name=det1000_n32c6nd1_mlTQU
+### Job name, det#ndets_#ntasks#corespertask#n_nodes_ml
 
-### #ntasks = #nodes x #ntasks-per-node
-### #ncores_total = #ntasks x #cpus-per-task
-### #ncores_total_pernode = #ntasks-per-node x #cpus-per-task
 
-### #SBATCH --mem-per-cpu=4G # mem per proc
-#SBATCH --mem=100G           # max mem requested, per node, baseline 400G
+#SBATCH --mem=700G            # max mem requested, per node, baseline 400G
 ### Maximum requested time (days-hrs:min:sec)
-#SBATCH --time 0-01:00:00 #estimated runtime max, baseline 0-15:00:00 
+#SBATCH --time 0-03:00:00     #estimated runtime max, baseline 0-08:00:00 
+#SBATCH --exclusive
 
-#SBATCH --output ./logs/%j.%x.out   # stdout file (overwrite)
-#SBATCH --error ./logs/%j.%x.err     # stdout file (overwrite)
+#SBATCH --output ./logs_mlmap/%j.%x.out    
+#SBATCH --error ./logs_mlmap/%j.%x.err     
 
 
 ### section 2 - Runtime env set-up
+echo ""
+echo "*************"
+echo "Loading Modules and Env..."
 module purge
 ### load all modules needed for Job
-module load mpi4py
+module load lang/Miniconda3/23.9.0-0
+module load lib/mpi4py/3.1.5-gompi-2023b
 ### initiate conda
-### source /opt/software/easybuild-INTEL/software/Anaconda3/2022.05/etc/profile.d/conda.shi
-source /opt/software/easybuild-INTEL/software/Miniforge3/24.1.2-0/etc/profile.d/conda.sh
 conda deactivate
 conda activate mlmap
+echo "*************"
+### Exit if a command exits with a non-zero status
+set -e
 
 ### section 3 - Job Logging
 echo ""
 echo "*************"
 echo "Running Job..."
 echo "Starting at `date`"
+echo "SLURM partition: $SLURM_JOB_PARTITION"
 echo "Hostname $HOSTNAME"
 echo "Job Name: $SLURM_JOB_NAME"
 echo "Job ID: $SLURM_JOB_ID"
@@ -65,9 +71,13 @@ echo "Cores per Node: $SLURM_CPUS_ON_NODE"
 echo "Total Number of Nodes: $SLURM_JOB_NUM_NODES"
 echo "Current working directory is `pwd`"
 echo "Python path: $(which python)"
+echo "Python version: $(python --version)"
+echo "Using mpi4py: $(python -c 'import mpi4py; print(mpi4py.__file__)' 2>/dev/null || echo '!! mpi4py not found !!')"
 echo "Using MPI lib: $(which mpirun)"
+echo "Using mpicc lib: $(which mpicc)"
 echo "Using GCC lib: $(which gcc)"
 echo ""
+
 
 ### section 4 - Set Job parameters
 ### Set TOD data dir

@@ -14,7 +14,7 @@ area: './ccat_datacenter_mock/context/geom.fits'
 # Output Directory and file name prefix
 odir: './ccat_datacenter_mock/maps_deep56'
 # Edit prefix as required
-prefix: 'mlmap_deep56_d100' 
+prefix: 'mlmap_deep56_d1000_tqu' 
 
 # Detectors info. null by default
 #tods: [::100] # Restrict TOD selections by index
@@ -24,7 +24,7 @@ prefix: 'mlmap_deep56_d100'
 #wafer: 'w17' # Restrict which wafers are mapped. Can do multiple wafers
 
 # Mapmaking meta
-comps: 'T' # 'TQU' #'T'
+comps: 'TQU' # 'TQU' #'T'
 inject: null
 nocal: True # No relcal or abscal
 downsample: 1 # Downsample TOD by this factor
