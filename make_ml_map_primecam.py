@@ -243,6 +243,20 @@ def main(config_file=None, defaults=defaults, **args):
             
             if 'flags' not in obs._fields:
                 obs.wrap('flags', FlagManager.for_tod(obs))
+
+            
+            # print("Computing turnaround flags with scanspeed...")
+            # # This creates a new flag called "turnarounds" in obs.flags
+            # ta, left, right = tod_ops.flags.get_turnaround_flags(
+            #                 obs, method="scanspeed", name="turnarounds", truncate=True,
+            #                 t_buffer=2, kernel_size=400, peak_threshold=0.1,
+            #                 rel_distance_peaks=0.3,
+            #             )
+
+            # print(f"ndet={obs.dets.count}, nsamp={obs.samps.count}")
+            # print("flags keys:", list(obs.flags.keys()))
+
+
              
             if "glitch_flags" not in obs.flags:
                 obs.flags.wrap('glitch_flags', so3g.proj.RangesMatrix.zeros(obs.signal.shape),
