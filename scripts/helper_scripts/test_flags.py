@@ -6,7 +6,12 @@ from sotodlib.tod_ops import flags as tod_flags
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("-c", "--context", required=True)
+    ap.add_argument(
+        "-c",
+        "--context",
+        default="ccat_datacenter_mock/context/context.yaml",
+        help="Path to the sotodlib context YAML",
+    )
     ap.add_argument("--query", default="1")
     ap.add_argument("--merge-into-glitch", action="store_true")
     args = ap.parse_args()
@@ -34,8 +39,20 @@ def main():
                     rel_distance_peaks=0.3,
                 )
 
+    # print("Computing turnaround flags with az...")
+    # # Use a separate flag name to compare az and scanspeed side-by-side.
+    # ta = tod_flags.get_turnaround_flags(
+    #     obs,
+    #     method="az",
+    #     name="turnarounds",
+    #     truncate=True,
+    #     t_buffer=2,
+    #     merge_subscans=False,
+    # )
+
     print(f"ndet={obs.dets.count}, nsamp={obs.samps.count}")
     print("flags keys:", list(obs.flags.keys()))
+    print("az-method segments (det0):", ta[0].ranges().shape[0])
 
     ### --------------------------------------------- ###
     ### DEBUG:
