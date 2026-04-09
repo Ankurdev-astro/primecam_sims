@@ -1,9 +1,9 @@
-###
-#Timestream Simulation Script for Prime-cam
-###
-###Last updated: Feb 04, 2025
-###
-#Author: Ankur Dev, adev@astro.uni-bonn-de
+##################################################
+### Timestream Simulation Script for Prime-cam ###
+##################################################
+
+###Last updated: April 09, 2026
+###Author: Ankur Dev, adev@astro.uni-bonn-de
 ###
 ###Logbook###
 ###
@@ -32,6 +32,7 @@
 #04-02-2025: Updated gains for atm sim
 #21-09-2025: Updated all dets to correct for NET values
 #21-09-2025: Updated gains for atm sim
+#09-04-2026: Added toggles for atm, noise and inmap scanning
 ###
 
 """
@@ -47,7 +48,6 @@ for more complex simulations tailored to specific experimental needs.
 Usage:
 Ref: https://github.com/hpc4cmb/toast/blob/toast3/workflows/toast_sim_ground.py
 Ref: TOAST3 Documentation: https://toast-cmb.readthedocs.io/en/toast3/intro.html
-
 """
 
 import toast
@@ -71,6 +71,9 @@ import time as t
 # Define the global args class
 class Args:
     def __init__(self, parsed_args):   
+        self.scan_inmap = True  #True Default; Toggle for scanning an input map
+        self.sim_atm = True #True Default; Toggle for atmosphere simulation
+        self.sim_noise = True #True Default; Toggle for detector instrument noise simulation
         self.weather = 'atacama'
         self.sample_rate = 488 * u.Hz #488 Hz # or 244 Hz
         self.scan_rate_az = 0.75  * (u.deg / u.s) #on sky rate , or 1 deg/s
@@ -198,8 +201,12 @@ def primecam_mockdata_pipeline(args, comm, focalplane, schedule, group_size):
     if not os.path.exists(hp_input_map):
         raise RuntimeError(f"Input map file not found: {hp_input_map}")
         
+    if args.scan_inmap:
+        log.info_rank(f"Scanning input map: {hp_input_map}", world_comm)
+    else:
+        log.info_rank(f"No input map scanning...", world_comm)
     scan_map = toast.ops.ScanHealpixMap(file=hp_input_map)
-    scan_map.enabled = True
+    scan_map.enabled = args.scan_inmap
     scan_map.pixel_pointing = pixels_radec
     scan_map.stokes_weights = weights_radec
     scan_map.apply(data)
@@ -208,7 +215,10 @@ def primecam_mockdata_pipeline(args, comm, focalplane, schedule, group_size):
     log.info_rank(f"After Scanning Input Map:  {mem}", world_comm)
 
     ### Atmospheric simulation
-    log.info_rank(f"Atmospheric simulation...", world_comm)
+    if args.sim_atm:
+        log.info_rank(f"Atmospheric simulation...", world_comm)
+    else:
+        log.info_rank(f"No atmospheric simulation...", world_comm)
     #Atmosphere set-up
     rand_realisation = random.randint(10000, 99999)
     tel_fov = 1.5* u.deg # 4* u.deg , changed 17.02.2025
@@ -237,10 +247,11 @@ def primecam_mockdata_pipeline(args, comm, focalplane, schedule, group_size):
     sim_atm_coarse.realization = 1000000 + rand_realisation
     sim_atm_coarse.field_of_view = tel_fov
     sim_atm_coarse.detector_pointing = det_pointing_azel
-    sim_atm_coarse.enabled = True  # Toggle to False to disable
+    sim_atm_coarse.enabled = args.sim_atm
     sim_atm_coarse.serial = False
     sim_atm_coarse.apply(data)
-    log.info_rank(" Applied large-scale Atmosphere simulation in", comm=world_comm, timer=timer)
+    if args.sim_atm:
+        log.info_rank(" Applied large-scale Atmosphere simulation in", comm=world_comm, timer=timer)
 
     sim_atm_fine= toast.ops.SimAtmosphere(
             name="sim_atm_fine",
@@ -263,17 +274,22 @@ def primecam_mockdata_pipeline(args, comm, focalplane, schedule, group_size):
     sim_atm_fine.field_of_view = tel_fov
     
     sim_atm_fine.detector_pointing = det_pointing_azel
-    sim_atm_fine.enabled = True  # Toggle to False to disable
+    sim_atm_fine.enabled = args.sim_atm
     sim_atm_fine.serial = False
     sim_atm_fine.apply(data)
-
-    log.info_rank("Applied small-scale Atmosphere simulation in", comm=world_comm, timer=timer)
+    if args.sim_atm:
+        log.info_rank("Applied small-scale Atmosphere simulation in", comm=world_comm, timer=timer)
     #------------------------#
     
     #simulate detector noise
+    if args.sim_noise:
+        log.info_rank(f"Simulating detector noise...", world_comm)
+    else:
+        log.info_rank(f"No detector noise simulation...", world_comm)
     sim_noise = toast.ops.SimNoise()
     sim_noise.noise_model = elevation_noise.out_model
     sim_noise.serial = False
+    sim_noise.enabled = args.sim_noise
     sim_noise.apply(data)
 
     mem = toast.utils.memreport(msg="(whole node)", comm=world_comm, silent=True)
