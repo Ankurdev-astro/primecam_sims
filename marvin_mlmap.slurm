@@ -4,7 +4,7 @@
 ###       SLURM script for ML Mapmaking    ####
 ###                                        ####
 ###     Tested on Uni Bonn Marvin Cluster  ####
-###             v1.0 , 18.10.2024          ####
+###             v2.0 , 17.04.2026          ####
 ###############################################
 
 ### This script run the ML-pipeline for a given set of detector TODs
@@ -22,32 +22,33 @@
 
 #SBATCH --nodes 2  # number of nodes
 
-#SBATCH --job-name=det1000_n16c6nd2_ml # Job name, #ntaskstotal#corespertask#n_nodes
+#SBATCH --job-name=det100_n16c6nd2_ml # Job name, #ntaskstotal#corespertask#n_nodes
 
 ### #ntasks = #nodes x #ntasks-per-node
 ### #ncores_total = #ntasks x #cpus-per-task
 ### #ncores_total_pernode = #ntasks-per-node x #cpus-per-task
 
 ### #SBATCH --mem-per-cpu=4G # mem per proc
-#SBATCH --mem=100G           # max mem requested, per node, baseline 400G
+#SBATCH --mem=400G           # max mem requested, per node, baseline 400G
 ### Maximum requested time (days-hrs:min:sec)
 #SBATCH --time 0-01:00:00 #estimated runtime max, baseline 0-15:00:00 
 
-### #SBATCH --mail-type=ALL   # notifications for job done & fail
-### #SBATCH --mail-user=adev@astro.uni-bonn.de #user email for updates
-#SBATCH --output ./logs/%j.%x.out   # stdout file (overwrite)
-#SBATCH --error ./logs/%j.%x.err     # stdout file (overwrite)
-
+#SBATCH --output ./logs/logs_map/%j.%x.out   # stdout file (overwrite)
+#SBATCH --error ./logs/logs_map/%j.%x.err     # stdout file (overwrite)
 
 ### section 2 - Runtime env set-up
+set -euo pipefail
 module purge
 ### load all modules needed for Job
-module load mpi4py
+### module load mpi4py
+module load mpi4py/3.1.5-gompi-2023b
 ### initiate conda
 ### source /opt/software/easybuild-INTEL/software/Anaconda3/2022.05/etc/profile.d/conda.shi
 source /opt/software/easybuild-INTEL/software/Miniforge3/24.1.2-0/etc/profile.d/conda.sh
 conda deactivate
-conda activate mlmap
+# conda activate mlmap
+conda activate latest-sotodlib ### sotodlib v0.6.3
+
 
 ### section 3 - Job Logging
 echo ""
@@ -68,6 +69,7 @@ echo "Total Number of Nodes: $SLURM_JOB_NUM_NODES"
 echo "Current working directory is `pwd`"
 echo "Python path: $(which python)"
 echo "Using MPI lib: $(which mpirun)"
+echo "mpi4py import version: $(python -c 'import mpi4py; print(mpi4py.__version__)')"
 echo "Using GCC lib: $(which gcc)"
 echo ""
 
@@ -78,6 +80,12 @@ PARENT_DIR="deep56_data_d1000"
 DATA_DIR="ccat_datacenter_mock/data_testmpi/"
 FULL_DATA_PATH="${DATA_DIR}${PARENT_DIR}"
 ML_CONFIG="config.yaml"
+
+echo ""
+echo "***** CONFIG *****"
+echo "Config file parameters from ${ML_CONFIG}:"
+grep -vE '^\s*#|^\s*$' "${ML_CONFIG}" | sed 's/^/  /'
+echo ""
 
 ### section 5 - Job Run
 echo "***** EXEC SCRIPT *****"

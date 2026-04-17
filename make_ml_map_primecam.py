@@ -33,10 +33,16 @@ defaults = {"query": "1",
             "nmat_dir": "/nmats",
             "nmat_mode": "build",
             "downsample": 1,
+            "prefilter_poly": False,
+            "prefilter_highpass": False,
             "maxiter": 500,
             "tiled": 1,
             "wafer": None,
            }
+
+# Hard-coded prefilter settings. Only the booleans above are configurable.
+PREFILTER_POLY_DEGREE = 3
+PREFILTER_HIGHPASS_FC = 0.05
     
 def get_parser(parser=None):
     if parser is None:
@@ -184,8 +190,29 @@ def main(config_file=None, defaults=defaults, **args):
             downweight=[1e-4, 0.25, 0.50], window=args['window'])
     else: raise ValueError("Unrecognized noise model '%s'" % args['nmat'])
 
-    signal_cut = mapmaking.SignalCut(comm, dtype=dtype_tod)
-    signal_map = mapmaking.SignalMap(shape, wcs, comm, comps=comps, dtype=dtype_map, recenter=recenter, tiled=args['tiled'] > 0)
+    # signal_cut = mapmaking.SignalCut(comm, dtype=dtype_tod, cut_field="flags.mlmap_flags")
+    signal_cut = mapmaking.SignalCut(comm, dtype=dtype_tod, cut_field="flags.glitch_flags")
+
+    # signal_map = mapmaking.SignalMap(
+    #     shape,
+    #     wcs,
+    #     comm,
+    #     comps=comps,
+    #     dtype=dtype_map,
+    #     recenter=recenter,
+    #     tiled=args['tiled'] > 0,
+    #     cut_field="flags.mlmap_flags",
+    # )
+    signal_map = mapmaking.SignalMap(
+        shape,
+        wcs,
+        comm,
+        comps=comps,
+        dtype=dtype_map,
+        recenter=recenter,
+        tiled=args['tiled'] > 0,
+        cut_field="flags.glitch_flags",
+    )
     signals    = [signal_cut, signal_map]
     mapmaker   = mapmaking.MLMapmaker(signals, noise_model=noise_model, dtype=dtype_tod, verbose=verbose>0)
 
@@ -222,6 +249,8 @@ def main(config_file=None, defaults=defaults, **args):
 
             with mapmaking.mark("read_obs %s" % name):
                 obs = context.get_obs(obs_id=obs_id, meta=meta)
+            # L.debug("Obs %s: aman.signal exists=%s shape=%s", name, hasattr(obs, "signal"), 
+            #         getattr(getattr(obs, "signal", None), "shape", None))
 
             # Fix boresight
             mapmaking.fix_boresight_glitches(obs)
@@ -244,23 +273,41 @@ def main(config_file=None, defaults=defaults, **args):
             if 'flags' not in obs._fields:
                 obs.wrap('flags', FlagManager.for_tod(obs))
 
-            
-            # print("Computing turnaround flags with scanspeed...")
-            # # This creates a new flag called "turnarounds" in obs.flags
-            # ta, left, right = tod_ops.flags.get_turnaround_flags(
-            #                 obs, method="scanspeed", name="turnarounds", truncate=True,
-            #                 t_buffer=2, kernel_size=400, peak_threshold=0.1,
-            #                 rel_distance_peaks=0.3,
-            #             )
-
-            # print(f"ndet={obs.dets.count}, nsamp={obs.samps.count}")
-            # print("flags keys:", list(obs.flags.keys()))
-
-
-             
             if "glitch_flags" not in obs.flags:
                 obs.flags.wrap('glitch_flags', so3g.proj.RangesMatrix.zeros(obs.signal.shape),
                         [(0,'dets'),(1,'samps')])
+
+
+            ### --------------------------------------- ###    
+            # Modified 06.04.2026
+            # Build turnaround flags and merge them 
+            if "turnarounds" not in obs.flags:
+                ### az method
+                # tod_ops.flags.get_turnaround_flags(
+                #     obs,
+                #     method="az",
+                #     name="turnarounds",
+                #     truncate=True,
+                #     t_buffer=2,
+                #     merge_subscans=False,
+                # )
+
+                ### scanspeed method
+                tod_ops.flags.get_turnaround_flags(
+                    obs, method="scanspeed", name="turnarounds",
+                    truncate=True, t_buffer=2, kernel_size=400, 
+                    peak_threshold=0.1, rel_distance_peaks=0.3,
+                )
+
+            # obs.flags.wrap('mlmap_flags', obs.flags.glitch_flags + obs.flags.turnarounds,
+            #         [(0,'dets'),(1,'samps')])
+            obs.flags.glitch_flags = obs.flags.glitch_flags + obs.flags.turnarounds
+
+            # L.debug(f"ndet={obs.dets.count}, nsamp={obs.samps.count}")
+            # L.debug(f"flags keys: {list(obs.flags.keys())}")
+            # L.debug(f"Turnaround segments: {obs.flags.turnarounds.ranges().shape[0]}")
+            # L.debug(f"glitch_flags segments (det0): {obs.flags.glitch_flags[0].ranges().shape[0]}")
+            ### --------------------------------------- ###    
 
             # Optionally skip all the calibration. Useful for sims.
             if not args['nocal']:
@@ -303,6 +350,28 @@ def main(config_file=None, defaults=defaults, **args):
             if args['inject']:
                 mapmaking.inject_map(obs, map_to_inject, recenter=recenter)
             utils.deslope(obs.signal, w=5, inplace=True)
+
+            # Modified 06.04.2026
+            if args['prefilter_poly']:
+                # Remove low-order scan-synchronous baselines per subscan.
+                tod_ops.subscan_polyfilter(
+                    obs,
+                    degree=PREFILTER_POLY_DEGREE,
+                    signal_name="signal",
+                    exclude_turnarounds=False,
+                    method="legendre",
+                    in_place=True,
+                )
+
+            # Modified 06.04.2026
+            if args['prefilter_highpass']:
+                # High-pass in Fourier space; assign result back to TOD signal.
+                obs.signal = tod_ops.fourier_filter(
+                    obs,
+                    filters.high_pass_butter4(fc=PREFILTER_HIGHPASS_FC),
+                    detrend='linear',
+                    signal_name="signal",
+                ).astype(dtype_tod)
 
             if args['downsample'] != 1:
                 obs = mapmaking.downsample_obs(obs, args['downsample'])
@@ -367,7 +436,7 @@ def main(config_file=None, defaults=defaults, **args):
     comm.Barrier()
     if comm.rank == 0:
         report_logger.info(f"{' ':<37} {'CG Step':<10} {'Error':<12} {'Time(s)':<5}")
-    for step in mapmaker.solve(maxiter=args['maxiter']):
+    for step in mapmaker.solve(maxiter=args['maxiter'], maxerr=1e-7):
         t2 = time.time()
         
         # Dump out intermediate maps only id dump-write is set

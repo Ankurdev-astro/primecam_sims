@@ -14,7 +14,7 @@ area: './ccat_datacenter_mock/context/geom.fits'
 # Output Directory and file name prefix
 odir: './ccat_datacenter_mock/maps_deep56/'
 # Edit prefix as required
-prefix: 'mlmap_deep56_d10' 
+prefix: 'mlmap_deep56_d100' 
 
 # Detectors info. null by default
 #tods: [::100] # Restrict TOD selections by index
@@ -26,21 +26,24 @@ prefix: 'mlmap_deep56_d10'
 # Mapmaking meta
 comps: 'T' # 'TQU' #'T'
 inject: null
-nocal: True # No relcal or abscal
+nocal: True #True # No relcal or abscal
 downsample: 1 # Downsample TOD by this factor
 tiled: 1 # Tiling boolean (0 or 1)
 nmat-dir: './ccat_datacenter_mock/nmats/' # Dir to save or load nmat
 nmat: 'corr' # 'corr' or 'uncorr'
-maxiter: 50 #500 default # Max number of iterative steps
+maxiter: 200 #500 default # Max number of iterative steps
 nmat_mode: 'build' # 'cache', 'build', 'load' or 'save'
 center_at: null #'16.0:-2.0'
 window: 0.0
 inject: null
 
+# Prefiltering options
+prefilter_poly: False #False # Apply subscan polynomial prefilter before mapmaking
+prefilter_highpass: False # Apply Fourier-space high-pass prefilter before mapmaking
+
 #Calibration
 #No calib fior sim data
 nocal: True
-
 
 # Scripting tools
 verbose: False
