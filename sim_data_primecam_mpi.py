@@ -33,6 +33,8 @@
 #21-09-2025: Updated all dets to correct for NET values
 #21-09-2025: Updated gains for atm sim
 #09-04-2026: Added toggles for atm, noise and inmap scanning
+#13-04-2026: Updated weather to median
+#17-04-2026: fp_trim.py is called now from this main script, handles full 1 FP array
 ###
 
 """
@@ -56,6 +58,7 @@ import toast.ops
 from toast.mpi import MPI
 # from toast.instrument_coords import quat_to_xieta
 from scripts.helper_scripts.calc_groupsize import job_group_size, estimate_group_size
+from scripts.fp_scripts import fp_trim
 
 import astropy.units as u
 from astropy.table import QTable, Column
@@ -146,7 +149,8 @@ def primecam_mockdata_pipeline(args, comm, focalplane, schedule, group_size):
     sim_ground.scan_rate_az =  args.scan_rate_az
     sim_ground.scan_accel_az = args.scan_accel_az
     sim_ground.max_pwv = 1.41 *u.mm
-    
+    sim_ground.median_weather = True #False, changed on 13.04.2026
+
     #=============================#
     ### El Nod Tests ###
 
@@ -339,18 +343,31 @@ def main():
     parser.add_argument('-g','--grp_size', default=None, type=int, help="Group size (optional)")
 
     parsed_args = parser.parse_args()
-    
+
+    # Initialize the communicator
+    comm, procs, rank = toast.get_world()
+
+    # Rank 0 prepares the focalplane file once; other ranks wait and reuse it.
+    if rank == 0:
+        ndets_selected, fp_filename = fp_trim.build_fp_file(parsed_args.dets)
+    else:
+        ndets_selected, fp_filename = None, None
+
+    if comm is not None:
+        ndets_selected = comm.bcast(ndets_selected, root=0)
+        fp_filename = comm.bcast(fp_filename, root=0)
+        comm.barrier()
+
+    # Keep detector count consistent with the exact focalplane file used.
+    parsed_args.dets = ndets_selected
     args = Args(parsed_args)
-    
+
     #Set up logger and timer
     log_global = toast.utils.Logger.get()
     global_timer = toast.timing.Timer()
     timer = toast.timing.Timer()
     global_timer.start()
     timer.start()
-
-    # Initialize the communicator
-    comm, procs, rank = toast.get_world()
     
     # Initialize the TOAST logger
     if "OMP_NUM_THREADS" in os.environ:
@@ -379,10 +396,8 @@ def main():
         f"Begin set-up and monitors for Simulating timestream data for PrimeCam/FYST",
         comm)
 
-    # Focalplane file
+    # Load the rank-synchronized focalplane file.
     try:
-        focalplane_file = f"dets_FP_PC280_{parsed_args.dets}_w2.h5"  
-        fp_filename = os.path.join("input_files/fp_files", focalplane_file)
         det_table = QTable.read(fp_filename, path='dettable_trim')
     except Exception as e:
         log_global.error(f"Failed to load focalplane file: {fp_filename}. Error: {e}", comm)
