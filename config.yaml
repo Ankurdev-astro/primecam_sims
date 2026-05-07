@@ -16,13 +16,19 @@ odir: './ccat_datacenter_mock/maps_deep56'
 # Edit prefix as required
 prefix: 'mlmap_deep56_d1000_tqu' 
 
-# Detectors info. null by default
-#tods: [::100] # Restrict TOD selections by index
-#ntod: 3 # Special case of `tods` above. Implemented as follows: [:ntod]
+### Detector / TOD selection
+### `tods` selects observations by index before any other limits are applied.
+### Valid forms:
+###   - tods: "[::100]"      # every 100th TOD
+###   - tods: "[:10]"       # first 10 TODs
+###   - tods: "[[0,1,5]]"   # explicit TOD indices
+# tods: "[:100]" # Restrict TOD selections by index
+### `ntod` is applied after `tods` and keeps only the first N from that result.
+#ntod: 3
 #nset: 10 # Number of detsets kept
 #max-dets: 200 # Maximum dets kept
-#wafer: 'w17' # Restrict which wafers are mapped. Can do multiple wafers
-
+#wafer: 'w17' # Restrict which wafers are mapped. Can do multiple wafers  
+  
 # Mapmaking meta
 comps: 'TQU' # 'TQU' #'T'
 inject: null

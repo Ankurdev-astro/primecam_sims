@@ -27,8 +27,8 @@ def plot_deep56ML(fits_file,vmin,vmax,save,title):
     lower_index = 15500
     upper_index = 24500
     
-    #converting to uK from K, cropping
-    cropped_image_data = (rolled_image_data[:,lower_index:upper_index]) * 1e6
+    #converting to mK from K, cropping
+    cropped_image_data = (rolled_image_data[:,lower_index:upper_index]) * 1e3
     #Flip the data tp match RA right to left
     cropped_image_data = np.fliplr(cropped_image_data)
 
@@ -107,39 +107,45 @@ def plot_deep56ML(fits_file,vmin,vmax,save,title):
 
     cbar = plt.colorbar(image, ax=ax, orientation='horizontal', fraction=0.05, pad=0.15, aspect=20)
     #cbar = plt.colorbar(image, ax=ax, orientation='vertical', pad=0.01)
-    cbar.set_label(r'Intensity [$\mu$K]', size=18, weight='bold')
+    cbar.set_label(r'Intensity [mK]', size=18, weight='bold')
     cbar.ax.tick_params(labelsize=14)
 
     if title:
         plt.title(title.replace(r'\n', '\n'), fontsize=22, fontweight='bold')
 
     if save:
-        plt.savefig(save)
+        plt.savefig(save, bbox_inches='tight')
+        plt.close(fig)
     else:
         plt.show()
 
 def main():
     parser = argparse.ArgumentParser(
             description="Plot a Deep56 FITS image of ML maps",
-            epilog="The vmin and vmax unit is in [uK]" 
+            epilog="The vmin and vmax unit is in [mK]" 
             )
     parser.add_argument('fits_file', 
         type=str, 
         help="Path to the FITS file.")
     parser.add_argument('--vmin', type=float, 
-                        default=-300, help="Minimum data value for colormap.")
+                        default=-5, help="Minimum data value for colormap.")
     parser.add_argument('--vmax', type=float, 
-                        default=300, help="Maximum data value for colormap.")
-    parser.add_argument('--save', type=str, 
-                        help="Path to save the output plot.")
+                        default=5, help="Maximum data value for colormap.")
+    parser.add_argument('--save', nargs='?', const='outfile', type=str,
+                        help="Save output plot. If used without a value, saves as <fits_basename>.png.")
     parser.add_argument('--title', type=str,
-                        default='Deep 56 Field with mock 280GHz PrimeCam: \n100 dets, ~100 Hours',
                         help="Title for the plot")
 
     args = parser.parse_args()
 
-    plot_deep56ML(args.fits_file, args.vmin, 
-                        args.vmax, args.save, args.title)
+    save_path = args.save
+    if args.save == 'outfile':
+        # If --save is provided without a value, derive output from input FITS name.
+        root, _ = os.path.splitext(args.fits_file)
+        save_path = f"{root}.png"
+
+    plot_deep56ML(args.fits_file, args.vmin,
+                        args.vmax, save_path, args.title)
     
 if __name__ == '__main__':
     main()
